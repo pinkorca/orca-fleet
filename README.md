@@ -9,7 +9,7 @@ Designed to simplify the management of multiple Telegram user accounts, offering
 - **Account Management**: Add function authenticates new accounts with full 2FA support and phone number validation.
 - **Session Persistence**: Securely stores and manages Telethon session files, ensuring long-term access without re-login.
 - **Health Checks**: validtes connectivity and authorization status for all stored accounts.
-- **Bulk Operations**: Automates joining channels and groups across all managed accounts with built-in rate limiting.
+- **Bulk Operations**: Automates joining and leaving channels and groups across all managed accounts with built-in rate limiting.
 
 ## Installation
 
@@ -53,10 +53,11 @@ The interactive menu provides the following options:
 - **List Accounts**: View all managed sessions.
 - **Health Check**: Verify status of all accounts (Active, Expired, Banned).
 - **Bulk Join**: Join specific channels or groups with all active accounts.
+- **Bulk Leave**: Leave specific channels or groups with all active accounts.
 
 ## Future Plans
 
-This project is in early development (v0.1.0). Future updates will focus on expanding orchestration capabilities and additional bulk management features.
+This project is in early development (v0.2.0). Future updates will focus on expanding orchestration capabilities and additional bulk management features.
 
 ## Disclaimer
 

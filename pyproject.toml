@@ -1,6 +1,6 @@
 [project]
 name = "orca-fleet"
-version = "0.1.0"
+version = "0.2.0"
 description = "Multi-account Telegram manager built with Telethon for efficient account orchestration"
 readme = "README.md"
 license = {file = "LICENSE"}

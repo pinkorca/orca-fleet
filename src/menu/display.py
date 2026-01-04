@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from src.features.health_check import AccountHealth
 
 # UI Constants
-MENU_WIDTH = 65
+MENU_WIDTH = 55
 LEFT_PADDING = 1
 BORDER_STYLE = "cyan"
 
@@ -68,7 +68,7 @@ class Display:
 
         content = Group(
             Align.center(Text("Orca Fleet", style="bold white")),
-            Align.center(Text("Multi-Account Telegram Manager v0.1.0", style="cyan")),
+            Align.center(Text("Multi-Account Telegram Manager v0.2.0", style="cyan")),
             Align.center(
                 Text("github.com/pinkorca/orca-fleet", style="blue underline")
             ),
@@ -204,6 +204,32 @@ class Display:
 
         table = Table(
             title=f"Join Results: {target}",
+            border_style="cyan",
+            width=MENU_WIDTH,
+            box=box.SIMPLE,
+        )
+        table.add_column("Phone", style="cyan")
+        table.add_column("Status", width=10)
+        table.add_column("Message")
+
+        for result in results:
+            if result.success:
+                status = Text("✓ OK", style="bold green")
+            else:
+                status = Text("✗ Fail", style="bold red")
+            table.add_row(result.phone, status, result.message)
+
+        self._output(table)
+
+    def leave_results_table(self, target: str, results: list) -> None:
+        """Display bulk leave results."""
+        from rich import box
+
+        if not results:
+            return
+
+        table = Table(
+            title=f"Leave Results: {target}",
             border_style="cyan",
             width=MENU_WIDTH,
             box=box.SIMPLE,

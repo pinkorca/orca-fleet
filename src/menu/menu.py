@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from src.config import get_config
 from src.features.account import AccountManager
 from src.features.bulk_join import BulkJoiner
+from src.features.bulk_leave import BulkLeaver
 from src.features.health_check import HealthChecker
 from src.menu.display import Display
 from src.utils.logger import get_logger
@@ -23,6 +24,7 @@ class MainMenu:
         "List Accounts",
         "Health Check",
         "Bulk Join Channel/Group",
+        "Bulk Leave Channel/Group",
         "Remove Account",
         "Exit",
     ]
@@ -33,6 +35,7 @@ class MainMenu:
         self.account_manager = AccountManager()
         self.health_checker = HealthChecker()
         self.bulk_joiner = BulkJoiner()
+        self.bulk_leaver = BulkLeaver()
         self.logger = get_logger(__name__)
         self._running = True
 
@@ -84,8 +87,9 @@ class MainMenu:
             2: self._list_accounts,
             3: self._health_check,
             4: self._bulk_join,
-            5: self._remove_account,
-            6: self._exit,
+            5: self._bulk_leave,
+            6: self._remove_account,
+            7: self._exit,
         }
         handler = handlers.get(choice)
         if handler:
@@ -204,6 +208,49 @@ class MainMenu:
 
         self.display.print()
         self.display.join_results_table(target, result.results)
+        self.display.print()
+        self.display.print_info(
+            f"Completed: {result.successful_count} succeeded, {result.failed_count} failed"
+        )
+
+    async def _bulk_leave(self) -> None:
+        """Bulk leave a channel/group."""
+        self.display.print("[bold]Bulk Leave Channel/Group[/bold]\n")
+
+        phones = self.account_manager.list_accounts()
+        if not phones:
+            self.display.print_error("No accounts available. Add accounts first.")
+            return
+
+        target = self.display.prompt(
+            "Enter channel/group (username, @handle, or t.me link)"
+        )
+        if not target:
+            self.display.print_warning("Cancelled")
+            return
+
+        self.display.print_info(f"Leaving with {len(phones)} account(s)...")
+        self.display.print_info(
+            f"Delay between leaves: {self.config.join_delay_min}-{self.config.join_delay_max}s"
+        )
+        self.display.print()
+
+        results_list = []
+
+        with self.display.create_progress() as progress:
+            task = progress.add_task("Processing...", total=len(phones))
+
+            def update_progress(current: int, total: int, result) -> None:
+                progress.update(task, completed=current)
+                results_list.append(result)
+
+            result = await self.bulk_leaver.bulk_leave(
+                target_input=target,
+                progress_callback=update_progress,
+            )
+
+        self.display.print()
+        self.display.leave_results_table(target, result.results)
         self.display.print()
         self.display.print_info(
             f"Completed: {result.successful_count} succeeded, {result.failed_count} failed"

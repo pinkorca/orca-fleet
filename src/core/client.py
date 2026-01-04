@@ -16,9 +16,10 @@ from telethon.errors import (
     SessionPasswordNeededError,
     UserAlreadyParticipantError,
     UserDeactivatedBanError,
+    UserNotParticipantError,
 )
-from telethon.tl.functions.channels import JoinChannelRequest
-from telethon.tl.functions.messages import ImportChatInviteRequest
+from telethon.tl.functions.channels import JoinChannelRequest, LeaveChannelRequest
+from telethon.tl.functions.messages import CheckChatInviteRequest, ImportChatInviteRequest
 
 from src.config import get_config
 from src.core.exceptions import (
@@ -178,6 +179,43 @@ class TelegramClient:
             return False, f"Rate limited: wait {e.seconds}s"
         except Exception as e:
             self.logger.debug(f"Join invite error: {e}")
+            return False, str(e)
+
+    async def leave_channel(self, channel: str) -> tuple[bool, str]:
+        """Leave a public channel/supergroup by username."""
+        try:
+            entity = await self._client.get_entity(channel)
+            await self._client(LeaveChannelRequest(entity))
+            return True, "Left successfully"
+        except UserNotParticipantError:
+            return True, "Not a member"
+        except FloodWaitError as e:
+            return False, f"Rate limited: wait {e.seconds}s"
+        except Exception as e:
+            self.logger.debug(f"Leave channel error: {e}")
+            return False, str(e)
+
+    async def leave_by_invite(self, invite_hash: str) -> tuple[bool, str]:
+        """Leave a channel/group using an invite hash."""
+        try:
+            result = await self._client(CheckChatInviteRequest(invite_hash))
+
+            if hasattr(result, 'chat'):
+                await self._client(LeaveChannelRequest(result.chat))
+                return True, "Left successfully"
+            else:
+                return True, "Not a member"
+
+        except InviteHashExpiredError:
+            return False, "Invite link expired"
+        except InviteHashInvalidError:
+            return False, "Invalid invite link"
+        except UserNotParticipantError:
+            return True, "Not a member"
+        except FloodWaitError as e:
+            return False, f"Rate limited: wait {e.seconds}s"
+        except Exception as e:
+            self.logger.debug(f"Leave invite error: {e}")
             return False, str(e)
 
     async def resolve_entity(self, target: str) -> Any:
