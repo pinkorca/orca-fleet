@@ -1,4 +1,5 @@
 """Configuration management for orca-fleet."""
+
 from __future__ import annotations
 
 import os
@@ -56,7 +57,7 @@ class Config:
             raise ValueError(
                 "Telegram API credentials not configured. "
                 "Please set API_ID and API_HASH in .env file. "
-                "Get credentials from https://my.telegram.org"
+                "Get credentials from https://my.telegram.org",
             )
 
 

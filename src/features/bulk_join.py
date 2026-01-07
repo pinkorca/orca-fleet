@@ -1,19 +1,17 @@
 """Bulk join feature for joining channels/groups with multiple accounts."""
+
 from __future__ import annotations
 
 import asyncio
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable
+from typing import Callable
 
 from src.config import get_config
 from src.core.client import TelegramClient
 from src.core.session_manager import SessionManager
 from src.utils.logger import get_logger
 from src.utils.validators import ChannelType, parse_channel_input
-
-if TYPE_CHECKING:
-    pass
 
 
 @dataclass
@@ -54,7 +52,10 @@ class BulkJoiner:
         return random.uniform(self.config.join_delay_min, self.config.join_delay_max)
 
     async def join_with_account(
-        self, phone: str, target: str, is_invite: bool
+        self,
+        phone: str,
+        target: str,
+        is_invite: bool,
     ) -> JoinResult:
         """Join a channel/group with a single account."""
         session_path = self.session_manager.get_session_path(phone)
@@ -83,7 +84,7 @@ class BulkJoiner:
         self,
         target_input: str,
         phones: list[str] | None = None,
-        progress_callback: Callable[[int, int, JoinResult], None] | None = None,
+        progress_callback: Callable[[int, JoinResult], None] | None = None,
     ) -> BulkJoinResult:
         """
         Join a channel/group with multiple accounts.
@@ -91,7 +92,7 @@ class BulkJoiner:
         Args:
             target_input: Channel username, t.me link, or invite link
             phones: Optional list of phones to use (default: all accounts)
-            progress_callback: Optional callback(current, total, result) for progress
+            progress_callback: Optional callback(current, result) for progress
 
         Returns:
             BulkJoinResult with all individual results
@@ -106,7 +107,7 @@ class BulkJoiner:
                         phone="N/A",
                         success=False,
                         message=f"Invalid target: {target_input}",
-                    )
+                    ),
                 ],
             )
 
@@ -125,7 +126,7 @@ class BulkJoiner:
                         phone="N/A",
                         success=False,
                         message="No accounts available",
-                    )
+                    ),
                 ],
             )
 
@@ -137,7 +138,7 @@ class BulkJoiner:
             results.append(result)
 
             if progress_callback:
-                progress_callback(i, total, result)
+                progress_callback(i, result)
 
             # Add delay between joins (except for the last one)
             if i < total:

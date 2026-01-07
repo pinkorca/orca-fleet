@@ -1,4 +1,5 @@
 """Health check feature for validating account sessions."""
+
 from __future__ import annotations
 
 import asyncio
@@ -58,11 +59,10 @@ class HealthChecker:
                     message=message,
                     name=name,
                 )
-            else:
-                status = AccountStatus.EXPIRED
-                if "banned" in message.lower():
-                    status = AccountStatus.BANNED
-                return AccountHealth(phone=phone, status=status, message=message)
+            status = AccountStatus.EXPIRED
+            if "banned" in message.lower():
+                status = AccountStatus.BANNED
+            return AccountHealth(phone=phone, status=status, message=message)
 
         except Exception as e:
             self.logger.debug(f"Health check error for {phone}: {e}")
@@ -75,13 +75,14 @@ class HealthChecker:
             await client.disconnect()
 
     async def check_all_accounts(
-        self, progress_callback: callable | None = None
+        self,
+        progress_callback: callable | None = None,
     ) -> list[AccountHealth]:
         """
         Check health of all stored accounts.
 
         Args:
-            progress_callback: Optional callback(current, total) for progress updates
+            progress_callback: Optional callback(current) for progress updates
         """
         phones = self.session_manager.get_all_phones()
         if not phones:
@@ -95,7 +96,7 @@ class HealthChecker:
             results.append(result)
 
             if progress_callback:
-                progress_callback(i, total)
+                progress_callback(i)
 
             # Small delay between checks to avoid rate limiting
             if i < total:

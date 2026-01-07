@@ -2,4 +2,4 @@
 from src.menu.display import Display
 from src.menu.menu import MainMenu
 
-__all__ = ["MainMenu", "Display"]
+__all__ = ["Display", "MainMenu"]

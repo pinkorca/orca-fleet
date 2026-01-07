@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from rich.align import Align
 from rich.console import Console, Group
+from rich.padding import Padding
 from rich.panel import Panel
 from rich.progress import (
     BarColumn,
@@ -15,7 +16,6 @@ from rich.progress import (
     TextColumn,
     TimeElapsedColumn,
 )
-from rich.padding import Padding
 from rich.prompt import Confirm, Prompt
 from rich.rule import Rule
 from rich.table import Table
@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 MENU_WIDTH = 55
 LEFT_PADDING = 1
 BORDER_STYLE = "cyan"
+PRESET_REACTIONS = ["👍", "❤️", "🔥", "🎉", "😢", "👎"]
 
 
 class Display:
@@ -68,9 +69,9 @@ class Display:
 
         content = Group(
             Align.center(Text("Orca Fleet", style="bold white")),
-            Align.center(Text("Multi-Account Telegram Manager v0.2.0", style="cyan")),
+            Align.center(Text("Multi-Account Telegram Manager v0.3.0", style="cyan")),
             Align.center(
-                Text("github.com/pinkorca/orca-fleet", style="blue underline")
+                Text("github.com/pinkorca/orca-fleet", style="blue underline"),
             ),
         )
 
@@ -86,10 +87,11 @@ class Display:
     def print_section_header(self, title: str) -> None:
         """Print a section header centered with lines."""
         self._output(
-            Rule(f"[bold cyan]{title}[/bold cyan]", style="dim cyan"), width=MENU_WIDTH
+            Rule(f"[bold cyan]{title}[/bold cyan]", style="dim cyan"),
+            width=MENU_WIDTH,
         )
 
-    def menu(self, title: str, options: list[str]) -> None:
+    def menu(self, options: list[str]) -> None:
         """Display options in a clean list format."""
         self.console.print()
 
@@ -247,10 +249,55 @@ class Display:
 
         self._output(table)
 
+    def reaction_menu(self) -> str | None:
+        """Display reaction selection menu and return chosen emoji."""
+        self.print("Select reaction:")
+        for i, emoji in enumerate(PRESET_REACTIONS, 1):
+            self._output(f"[{i}] {emoji}")
+        self._output(f"[{len(PRESET_REACTIONS) + 1}] Custom emoji")
+
+        self.divider("─")
+        pad = " " * LEFT_PADDING
+        try:
+            choice = Prompt.ask(f"{pad}[bold cyan]?[/bold cyan] Select option")
+            num = int(choice)
+            if 1 <= num <= len(PRESET_REACTIONS):
+                return PRESET_REACTIONS[num - 1]
+            if num == len(PRESET_REACTIONS) + 1:
+                emoji = Prompt.ask(f"{pad}[bold cyan]?[/bold cyan] Paste emoji")
+                return emoji.strip() if emoji else None
+            return None
+        except ValueError:
+            return None
+
+    def reaction_results_table(self, target: str, emoji: str, results: list) -> None:
+        """Display bulk reaction results."""
+        from rich import box
+
+        if not results:
+            return
+
+        table = Table(
+            title=f"Reaction Results: {target} {emoji}",
+            border_style="cyan",
+            width=MENU_WIDTH,
+            box=box.SIMPLE,
+        )
+        table.add_column("Phone", style="cyan")
+        table.add_column("Status", width=10)
+        table.add_column("Message")
+
+        for result in results:
+            if result.success:
+                status = Text("✓ OK", style="bold green")
+            else:
+                status = Text("✗ Fail", style="bold red")
+            table.add_row(result.phone, status, result.message)
+
+        self._output(table)
+
     def create_progress(self) -> Progress:
         """Create a progress bar context manager."""
-        from rich.padding import Padding
-
         pad_str = " " * LEFT_PADDING
         return Progress(
             TextColumn(pad_str),

@@ -54,10 +54,11 @@ The interactive menu provides the following options:
 - **Health Check**: Verify status of all accounts (Active, Expired, Banned).
 - **Bulk Join**: Join specific channels or groups with all active accounts.
 - **Bulk Leave**: Leave specific channels or groups with all active accounts.
+- **Bulk Reaction**: Send emoji reactions to messages with all active accounts.
 
 ## Future Plans
 
-This project is in early development (v0.2.0). Future updates will focus on expanding orchestration capabilities and additional bulk management features.
+This project is in early development (v0.3.0). Future updates will focus on expanding orchestration capabilities and additional bulk management features.
 
 ## Disclaimer
 

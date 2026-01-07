@@ -1,9 +1,12 @@
 """Input validation utilities."""
+
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
 from enum import Enum, auto
+
+USERNAME_PATTERN = r"[a-zA-Z][a-zA-Z0-9_]{3,30}[a-zA-Z0-9]"
 
 
 class ChannelType(Enum):
@@ -69,7 +72,7 @@ def parse_channel_input(text: str) -> ChannelInput:
         )
 
     # Handle t.me/username format (public channel)
-    public_match = re.match(r"(?:https?://)?t\.me/([a-zA-Z][a-zA-Z0-9_]{3,30}[a-zA-Z0-9])$", text)
+    public_match = re.match(rf"(?:https?://)?t\.me/({USERNAME_PATTERN})$", text)
     if public_match:
         return ChannelInput(
             original=text,
@@ -78,7 +81,7 @@ def parse_channel_input(text: str) -> ChannelInput:
         )
 
     # Handle @username format
-    at_match = re.match(r"^@([a-zA-Z][a-zA-Z0-9_]{3,30}[a-zA-Z0-9])$", text)
+    at_match = re.match(rf"^@({USERNAME_PATTERN})$", text)
     if at_match:
         return ChannelInput(
             original=text,
@@ -87,7 +90,7 @@ def parse_channel_input(text: str) -> ChannelInput:
         )
 
     # Handle plain username
-    plain_match = re.match(r"^([a-zA-Z][a-zA-Z0-9_]{3,30}[a-zA-Z0-9])$", text)
+    plain_match = re.match(rf"^({USERNAME_PATTERN})$", text)
     if plain_match:
         return ChannelInput(
             original=text,
@@ -96,3 +99,84 @@ def parse_channel_input(text: str) -> ChannelInput:
         )
 
     return ChannelInput(original=text, channel_type=ChannelType.INVALID, value="")
+
+
+class MessageLinkType(Enum):
+    """Type of message link."""
+
+    PUBLIC_CHANNEL = auto()  # t.me/channel/123
+    PRIVATE_CHANNEL = auto()  # t.me/c/1234567890/123
+    TOPIC_MESSAGE = auto()  # t.me/channel/123/456 or t.me/c/ID/TOPIC/MSG
+    INVALID = auto()
+
+
+@dataclass
+class MessageLink:
+    """Parsed message link."""
+
+    original: str
+    link_type: MessageLinkType
+    peer: str  # username or channel_id
+    message_id: int
+    topic_id: int | None = None
+
+    @property
+    def is_valid(self) -> bool:
+        return self.link_type != MessageLinkType.INVALID
+
+
+def parse_message_link(text: str) -> MessageLink:
+    """Parse message link into structured format."""
+    text = text.strip()
+
+    # Private channel with topic: t.me/c/1234567890/123/456
+    private_topic = re.match(r"(?:https?://)?t\.me/c/(\d+)/(\d+)/(\d+)$", text)
+    if private_topic:
+        return MessageLink(
+            original=text,
+            link_type=MessageLinkType.TOPIC_MESSAGE,
+            peer=private_topic.group(1),
+            message_id=int(private_topic.group(3)),
+            topic_id=int(private_topic.group(2)),
+        )
+
+    # Private channel: t.me/c/1234567890/123
+    private_match = re.match(r"(?:https?://)?t\.me/c/(\d+)/(\d+)$", text)
+    if private_match:
+        return MessageLink(
+            original=text,
+            link_type=MessageLinkType.PRIVATE_CHANNEL,
+            peer=private_match.group(1),
+            message_id=int(private_match.group(2)),
+        )
+
+    # Public channel with topic
+    public_topic = re.match(
+        rf"(?:https?://)?t\.me/({USERNAME_PATTERN})/(\d+)/(\d+)$",
+        text,
+    )
+    if public_topic:
+        return MessageLink(
+            original=text,
+            link_type=MessageLinkType.TOPIC_MESSAGE,
+            peer=public_topic.group(1),
+            message_id=int(public_topic.group(3)),
+            topic_id=int(public_topic.group(2)),
+        )
+
+    # Public channel
+    public_match = re.match(rf"(?:https?://)?t\.me/({USERNAME_PATTERN})/(\d+)$", text)
+    if public_match:
+        return MessageLink(
+            original=text,
+            link_type=MessageLinkType.PUBLIC_CHANNEL,
+            peer=public_match.group(1),
+            message_id=int(public_match.group(2)),
+        )
+
+    return MessageLink(
+        original=text,
+        link_type=MessageLinkType.INVALID,
+        peer="",
+        message_id=0,
+    )

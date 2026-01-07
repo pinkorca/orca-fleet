@@ -1,4 +1,5 @@
 """Telethon client wrapper with connection management and error handling."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -19,7 +20,12 @@ from telethon.errors import (
     UserNotParticipantError,
 )
 from telethon.tl.functions.channels import JoinChannelRequest, LeaveChannelRequest
-from telethon.tl.functions.messages import CheckChatInviteRequest, ImportChatInviteRequest
+from telethon.tl.functions.messages import (
+    CheckChatInviteRequest,
+    ImportChatInviteRequest,
+    SendReactionRequest,
+)
+from telethon.tl.types import ReactionEmoji
 
 from src.config import get_config
 from src.core.exceptions import (
@@ -85,15 +91,18 @@ class TelegramClient:
             return result.phone_code_hash
         except PhoneNumberInvalidError as e:
             raise AuthenticationError(
-                f"Invalid phone number: {self.phone}", original_error=e
+                f"Invalid phone number: {self.phone}",
+                original_error=e,
             ) from e
         except PhoneNumberBannedError as e:
             raise AccountBannedError(
-                f"Phone number {self.phone} is banned", original_error=e
+                f"Phone number {self.phone} is banned",
+                original_error=e,
             ) from e
         except FloodWaitError as e:
             raise RateLimitError(
-                f"Too many requests. Wait {e.seconds} seconds.", wait_seconds=e.seconds
+                f"Too many requests. Wait {e.seconds} seconds.",
+                wait_seconds=e.seconds,
             ) from e
 
     async def sign_in(
@@ -105,7 +114,9 @@ class TelegramClient:
         """Sign in with code and optional 2FA password."""
         try:
             user = await self._client.sign_in(
-                phone=self.phone, code=code, phone_code_hash=phone_code_hash
+                phone=self.phone,
+                code=code,
+                phone_code_hash=phone_code_hash,
             )
             return user
         except SessionPasswordNeededError as e:
@@ -118,7 +129,8 @@ class TelegramClient:
             raise PhoneCodeError("Verification code expired", original_error=e) from e
         except FloodWaitError as e:
             raise RateLimitError(
-                f"Too many attempts. Wait {e.seconds} seconds.", wait_seconds=e.seconds
+                f"Too many attempts. Wait {e.seconds} seconds.",
+                wait_seconds=e.seconds,
             ) from e
 
     async def _sign_in_2fa(self, password: str) -> User:
@@ -126,7 +138,10 @@ class TelegramClient:
         try:
             return await self._client.sign_in(password=password)
         except Exception as e:
-            raise TwoFactorError(f"2FA authentication failed: {e}", original_error=e) from e
+            raise TwoFactorError(
+                f"2FA authentication failed: {e}",
+                original_error=e,
+            ) from e
 
     async def get_me(self) -> User | None:
         """Get current user info."""
@@ -200,11 +215,10 @@ class TelegramClient:
         try:
             result = await self._client(CheckChatInviteRequest(invite_hash))
 
-            if hasattr(result, 'chat'):
+            if hasattr(result, "chat"):
                 await self._client(LeaveChannelRequest(result.chat))
                 return True, "Left successfully"
-            else:
-                return True, "Not a member"
+            return True, "Not a member"
 
         except InviteHashExpiredError:
             return False, "Invite link expired"
@@ -223,4 +237,29 @@ class TelegramClient:
         try:
             return await self._client.get_entity(target)
         except Exception as e:
-            raise EntityNotFoundError(f"Could not resolve: {target}", original_error=e) from e
+            raise EntityNotFoundError(
+                f"Could not resolve: {target}",
+                original_error=e,
+            ) from e
+
+    async def send_reaction(
+        self,
+        peer: Any,
+        message_id: int,
+        emoji: str,
+    ) -> tuple[bool, str]:
+        """Send a reaction to a message."""
+        try:
+            await self._client(
+                SendReactionRequest(
+                    peer=peer,
+                    msg_id=message_id,
+                    reaction=[ReactionEmoji(emoticon=emoji)],
+                ),
+            )
+            return True, "Reaction sent"
+        except FloodWaitError as e:
+            return False, f"Rate limited: wait {e.seconds}s"
+        except Exception as e:
+            self.logger.debug(f"Reaction error: {e}")
+            return False, str(e)

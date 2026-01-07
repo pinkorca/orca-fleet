@@ -1,4 +1,5 @@
 """Session management for Telegram accounts."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

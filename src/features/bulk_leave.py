@@ -1,19 +1,17 @@
 """Bulk leave feature for leaving channels/groups with multiple accounts."""
+
 from __future__ import annotations
 
 import asyncio
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable
+from typing import Callable
 
 from src.config import get_config
 from src.core.client import TelegramClient
 from src.core.session_manager import SessionManager
 from src.utils.logger import get_logger
 from src.utils.validators import ChannelType, parse_channel_input
-
-if TYPE_CHECKING:
-    pass
 
 
 @dataclass
@@ -54,7 +52,10 @@ class BulkLeaver:
         return random.uniform(self.config.join_delay_min, self.config.join_delay_max)
 
     async def leave_with_account(
-        self, phone: str, target: str, is_invite: bool
+        self,
+        phone: str,
+        target: str,
+        is_invite: bool,
     ) -> LeaveResult:
         """Leave a channel/group with a single account."""
         session_path = self.session_manager.get_session_path(phone)
@@ -64,7 +65,11 @@ class BulkLeaver:
             await client.connect()
 
             if not await client.is_authorized():
-                return LeaveResult(phone=phone, success=False, message="Session expired")
+                return LeaveResult(
+                    phone=phone,
+                    success=False,
+                    message="Session expired",
+                )
 
             if is_invite:
                 success, message = await client.leave_by_invite(target)
@@ -83,7 +88,7 @@ class BulkLeaver:
         self,
         target_input: str,
         phones: list[str] | None = None,
-        progress_callback: Callable[[int, int, LeaveResult], None] | None = None,
+        progress_callback: Callable[[int, LeaveResult], None] | None = None,
     ) -> BulkLeaveResult:
         """
         Leave a channel/group with multiple accounts.
@@ -91,7 +96,7 @@ class BulkLeaver:
         Args:
             target_input: Channel username, t.me link, or invite link
             phones: Optional list of phones to use (default: all accounts)
-            progress_callback: Optional callback(current, total, result) for progress
+            progress_callback: Optional callback(current, result) for progress
 
         Returns:
             BulkLeaveResult with all individual results
@@ -106,7 +111,7 @@ class BulkLeaver:
                         phone="N/A",
                         success=False,
                         message=f"Invalid target: {target_input}",
-                    )
+                    ),
                 ],
             )
 
@@ -125,7 +130,7 @@ class BulkLeaver:
                         phone="N/A",
                         success=False,
                         message="No accounts available",
-                    )
+                    ),
                 ],
             )
 
@@ -137,7 +142,7 @@ class BulkLeaver:
             results.append(result)
 
             if progress_callback:
-                progress_callback(i, total, result)
+                progress_callback(i, result)
 
             # Add delay between leaves (except for the last one)
             if i < total:

@@ -1,4 +1,5 @@
 """Custom exceptions for orca-fleet."""
+
 from __future__ import annotations
 
 

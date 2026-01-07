@@ -1,30 +1,30 @@
 """Interactive menu system for orca-fleet."""
+
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
+from typing import ClassVar
 
 from src.config import get_config
 from src.features.account import AccountManager
 from src.features.bulk_join import BulkJoiner
 from src.features.bulk_leave import BulkLeaver
+from src.features.bulk_reaction import BulkReactor
 from src.features.health_check import HealthChecker
 from src.menu.display import Display
 from src.utils.logger import get_logger
-
-if TYPE_CHECKING:
-    pass
 
 
 class MainMenu:
     """Main interactive menu for the application."""
 
-    MENU_OPTIONS = [
+    MENU_OPTIONS: ClassVar[list[str]] = [
         "Add Account",
         "List Accounts",
         "Health Check",
         "Bulk Join Channel/Group",
         "Bulk Leave Channel/Group",
+        "Bulk Reaction",
         "Remove Account",
         "Exit",
     ]
@@ -36,6 +36,7 @@ class MainMenu:
         self.health_checker = HealthChecker()
         self.bulk_joiner = BulkJoiner()
         self.bulk_leaver = BulkLeaver()
+        self.bulk_reactor = BulkReactor()
         self.logger = get_logger(__name__)
         self._running = True
 
@@ -51,7 +52,7 @@ class MainMenu:
         # Validate configuration
         if not self.config.is_configured:
             self.display.print_error(
-                "API credentials not configured. Please set API_ID and API_HASH in .env file."
+                "API credentials not configured. Please set API_ID and API_HASH in .env file.",
             )
             self.display.print_info("Get credentials from: https://my.telegram.org")
             return
@@ -61,7 +62,7 @@ class MainMenu:
         self.display.divider()
 
         while self._running:
-            self.display.menu("Main Menu", self.MENU_OPTIONS)
+            self.display.menu(self.MENU_OPTIONS)
 
             choice = self.display.prompt_choice("Select option", len(self.MENU_OPTIONS))
             if choice is None:
@@ -88,8 +89,9 @@ class MainMenu:
             3: self._health_check,
             4: self._bulk_join,
             5: self._bulk_leave,
-            6: self._remove_account,
-            7: self._exit,
+            6: self._bulk_reaction,
+            7: self._remove_account,
+            8: self._exit,
         }
         handler = handlers.get(choice)
         if handler:
@@ -151,11 +153,11 @@ class MainMenu:
         with self.display.create_progress() as progress:
             task = progress.add_task("Checking...", total=len(phones))
 
-            def update_progress(current: int, total: int) -> None:
+            def update_progress(current: int) -> None:
                 progress.update(task, completed=current)
 
             results = await self.health_checker.check_all_accounts(
-                progress_callback=update_progress
+                progress_callback=update_progress,
             )
 
         self.display.print()
@@ -167,7 +169,7 @@ class MainMenu:
             f"Summary: {summary['active']} active, "
             f"{summary['expired']} expired, "
             f"{summary['banned']} banned, "
-            f"{summary['error']} errors"
+            f"{summary['error']} errors",
         )
 
     async def _bulk_join(self) -> None:
@@ -180,7 +182,7 @@ class MainMenu:
             return
 
         target = self.display.prompt(
-            "Enter channel/group (username, @handle, or t.me link)"
+            "Enter channel/group (username, @handle, or t.me link)",
         )
         if not target:
             self.display.print_warning("Cancelled")
@@ -188,7 +190,7 @@ class MainMenu:
 
         self.display.print_info(f"Joining with {len(phones)} account(s)...")
         self.display.print_info(
-            f"Delay between joins: {self.config.join_delay_min}-{self.config.join_delay_max}s"
+            f"Delay between joins: {self.config.join_delay_min}-{self.config.join_delay_max}s",
         )
         self.display.print()
 
@@ -197,7 +199,7 @@ class MainMenu:
         with self.display.create_progress() as progress:
             task = progress.add_task("Processing...", total=len(phones))
 
-            def update_progress(current: int, total: int, result) -> None:
+            def update_progress(current: int, result) -> None:
                 progress.update(task, completed=current)
                 results_list.append(result)
 
@@ -210,7 +212,7 @@ class MainMenu:
         self.display.join_results_table(target, result.results)
         self.display.print()
         self.display.print_info(
-            f"Completed: {result.successful_count} succeeded, {result.failed_count} failed"
+            f"Completed: {result.successful_count} succeeded, {result.failed_count} failed",
         )
 
     async def _bulk_leave(self) -> None:
@@ -223,7 +225,7 @@ class MainMenu:
             return
 
         target = self.display.prompt(
-            "Enter channel/group (username, @handle, or t.me link)"
+            "Enter channel/group (username, @handle, or t.me link)",
         )
         if not target:
             self.display.print_warning("Cancelled")
@@ -231,7 +233,7 @@ class MainMenu:
 
         self.display.print_info(f"Leaving with {len(phones)} account(s)...")
         self.display.print_info(
-            f"Delay between leaves: {self.config.join_delay_min}-{self.config.join_delay_max}s"
+            f"Delay between leaves: {self.config.join_delay_min}-{self.config.join_delay_max}s",
         )
         self.display.print()
 
@@ -240,7 +242,7 @@ class MainMenu:
         with self.display.create_progress() as progress:
             task = progress.add_task("Processing...", total=len(phones))
 
-            def update_progress(current: int, total: int, result) -> None:
+            def update_progress(current: int, result) -> None:
                 progress.update(task, completed=current)
                 results_list.append(result)
 
@@ -253,7 +255,58 @@ class MainMenu:
         self.display.leave_results_table(target, result.results)
         self.display.print()
         self.display.print_info(
-            f"Completed: {result.successful_count} succeeded, {result.failed_count} failed"
+            f"Completed: {result.successful_count} succeeded, {result.failed_count} failed",
+        )
+
+    async def _bulk_reaction(self) -> None:
+        """Bulk reaction to a message."""
+        self.display.print("[bold]Bulk Reaction[/bold]\n")
+
+        phones = self.account_manager.list_accounts()
+        if not phones:
+            self.display.print_error("No accounts available. Add accounts first.")
+            return
+
+        target = self.display.prompt(
+            "Enter message link (t.me/channel/123 or t.me/c/ID/123)",
+        )
+        if not target:
+            self.display.print_warning("Cancelled")
+            return
+
+        self.display.print()
+        emoji = self.display.reaction_menu()
+        if not emoji:
+            self.display.print_warning("Cancelled")
+            return
+
+        self.display.print()
+        self.display.print_info(f"Sending {emoji} with {len(phones)} account(s)...")
+        self.display.print_info(
+            f"Delay between reactions: {self.config.join_delay_min}-{self.config.join_delay_max}s",
+        )
+        self.display.print()
+
+        results_list = []
+
+        with self.display.create_progress() as progress:
+            task = progress.add_task("Processing...", total=len(phones))
+
+            def update_progress(current: int, result) -> None:
+                progress.update(task, completed=current)
+                results_list.append(result)
+
+            result = await self.bulk_reactor.bulk_react(
+                message_link=target,
+                emoji=emoji,
+                progress_callback=update_progress,
+            )
+
+        self.display.print()
+        self.display.reaction_results_table(target, emoji, result.results)
+        self.display.print()
+        self.display.print_info(
+            f"Completed: {result.successful_count} succeeded, {result.failed_count} failed",
         )
 
     async def _remove_account(self) -> None:

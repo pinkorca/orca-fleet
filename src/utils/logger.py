@@ -1,14 +1,11 @@
 """Logging configuration for orca-fleet."""
+
 from __future__ import annotations
 
 import logging
 import sys
-from typing import TYPE_CHECKING
 
 from src.config import get_config
-
-if TYPE_CHECKING:
-    pass
 
 _loggers: dict[str, logging.Logger] = {}
 

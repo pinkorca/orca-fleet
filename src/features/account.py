@@ -1,7 +1,8 @@
 """Account management feature."""
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import Callable
 
 from src.config import get_config
 from src.core.client import TelegramClient
@@ -14,9 +15,6 @@ from src.core.exceptions import (
 from src.core.session_manager import SessionManager
 from src.utils.logger import get_logger
 from src.utils.validators import validate_phone
-
-if TYPE_CHECKING:
-    pass
 
 
 class AccountManager:
@@ -63,7 +61,11 @@ class AccountManager:
             # Check if already authorized (resuming session)
             if await client.is_authorized():
                 me = await client.get_me()
-                name = f"{me.first_name or ''} {me.last_name or ''}".strip() if me else "Unknown"
+                name = (
+                    f"{me.first_name or ''} {me.last_name or ''}".strip()
+                    if me
+                    else "Unknown"
+                )
                 return True, f"Account {phone} ({name}) already authorized"
 
             # Send verification code
